@@ -15,6 +15,10 @@ export class SocketHandler {
   public init(server: HttpServer): WebSocketServer {
     this.wss = new WebSocketServer({ server, path: '/ws' });
 
+    this.wss.on('error', (err) => {
+      console.error('[WebSocket] Server error:', err);
+    });
+
     this.wss.on('connection', (ws: WebSocket, req) => {
       this.clients.add(ws);
       console.log(`[WebSocket] Client connected from ${req.socket.remoteAddress}. Active clients: ${this.clients.size}`);
