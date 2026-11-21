@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { classroomService } from '../services/classroom.service';
+import { db } from '../database/mock-db';
 
 export class ClassroomController {
   public async getClasses(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -22,6 +23,36 @@ export class ClassroomController {
         return;
       }
       res.status(200).json(cls);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  public async lookupClass(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const codeOrId = req.params.codeOrId;
+      const normalized = (codeOrId || '').trim().toUpperCase();
+      const cls = db.findClassById(codeOrId) || db.findClassByCode(normalized);
+      if (!cls) {
+        res.status(404).json({ success: false, error: `Classroom not found for "${codeOrId}".` });
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        classroom: {
+          id: cls.id,
+          name: cls.name,
+          code: cls.code || cls.joinCode,
+          joinCode: cls.joinCode || cls.code,
+          subjectCode: cls.subjectCode || cls.code || 'CS',
+          department: cls.department,
+          mentorName: cls.mentorName,
+          mentorEmail: cls.mentorEmail,
+          semester: cls.semester,
+          academicYear: cls.academicYear,
+          coverGradient: cls.coverGradient || 'from-indigo-900 to-slate-950'
+        }
+      });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }

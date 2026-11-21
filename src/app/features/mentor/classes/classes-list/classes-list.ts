@@ -66,8 +66,25 @@ export class ClassesListComponent implements OnInit {
     this.isLoading.set(true);
     this.provider.getMentorClasses().subscribe({
       next: (data) => {
-        this.classes.set(data);
+        const normalized = data.map(c => ({
+          ...c,
+          joinCode: c.joinCode || (c as any).code || 'DIST-SYS-601',
+          subjectCode: c.subjectCode || (c as any).code || 'CS601'
+        }));
+        this.classes.set(normalized);
         this.isLoading.set(false);
+
+        // Sync backend classes to localStorage so Student Portal can find any classroom
+        if (typeof window !== 'undefined') {
+          try {
+            const existingRaw = localStorage.getItem('viva_mentor_classes');
+            const existing = existingRaw ? JSON.parse(existingRaw) : [];
+            const idMap = new Map<string, any>();
+            normalized.forEach(c => idMap.set(c.id, c));
+            existing.forEach((c: any) => { if (!idMap.has(c.id)) idMap.set(c.id, c); });
+            localStorage.setItem('viva_mentor_classes', JSON.stringify(Array.from(idMap.values())));
+          } catch (e) {}
+        }
       },
       error: () => this.isLoading.set(false)
     });
@@ -75,7 +92,8 @@ export class ClassesListComponent implements OnInit {
 
   getJoinLink(classItem: MentorClass): string {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:4200';
-    return `${origin}/student/classes?joinCode=${classItem.joinCode}`;
+    const code = classItem.joinCode || (classItem as any).code || '';
+    return `${origin}/student/classes?joinCode=${encodeURIComponent(code)}`;
   }
 
   copyJoinLink(classItem: MentorClass): void {
@@ -86,7 +104,10 @@ export class ClassesListComponent implements OnInit {
   }
 
   copyJoinCode(classItem: MentorClass): void {
-    navigator.clipboard.writeText(classItem.joinCode);
+    const code = classItem.joinCode || (classItem as any).code || '';
+    if (code) {
+      navigator.clipboard.writeText(code);
+    }
     this.copiedCodeId.set(classItem.id);
     setTimeout(() => this.copiedCodeId.set(null), 2500);
   }
@@ -114,11 +135,30 @@ export class ClassesListComponent implements OnInit {
     this.isSubmitting.set(true);
     this.provider.createClass(this.newClass).subscribe({
       next: (created) => {
+        // Guarantee valid joinCode and subjectCode on created class
+        const finalJoinCode = created.joinCode || (created as any).code || `${this.newClass.subjectCode.substring(0, 4).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        created.joinCode = finalJoinCode;
+        created.subjectCode = created.subjectCode || this.newClass.subjectCode;
+        if (!created.academicYear) created.academicYear = this.newClass.academicYear || '2026-2027';
+        if (!created.semester) created.semester = this.newClass.semester || 5;
+
         this.classes.update(prev => [created, ...prev]);
         this.isSubmitting.set(false);
         this.closeCreateModal();
         this.classCreatedSuccess.set(created);
         setTimeout(() => this.classCreatedSuccess.set(null), 10000);
+
+        // Immediately sync to localStorage viva_mentor_classes so Student Portal finds it instantly!
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem('viva_mentor_classes');
+            const list = raw ? JSON.parse(raw) : [];
+            const updated = [created, ...list.filter((c: any) => c.id !== created.id && c.joinCode !== created.joinCode)];
+            localStorage.setItem('viva_mentor_classes', JSON.stringify(updated));
+          } catch (e) {
+            console.warn('Could not cache created mentor class', e);
+          }
+        }
       },
       error: () => this.isSubmitting.set(false)
     });

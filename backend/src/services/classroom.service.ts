@@ -31,34 +31,50 @@ export class ClassroomService {
   }
 
   public async getAllClasses(mentorId?: string): Promise<MentorClass[]> {
-    if (mentorId) {
-      return db.classes.filter(c => c.mentorId === mentorId);
-    }
-    return db.classes;
+    const rawClasses = mentorId ? db.classes.filter(c => c.mentorId === mentorId) : db.classes;
+    return rawClasses.map(c => ({
+      ...c,
+      code: c.code || c.joinCode || '',
+      joinCode: c.joinCode || c.code || '',
+      subjectCode: c.subjectCode || c.code || c.name.substring(0, 5).toUpperCase()
+    }));
   }
 
   public async getClassById(classId: string): Promise<MentorClass | null> {
-    return db.findClassById(classId) || null;
+    const c = db.findClassById(classId);
+    if (!c) return null;
+    return {
+      ...c,
+      code: c.code || c.joinCode || '',
+      joinCode: c.joinCode || c.code || '',
+      subjectCode: c.subjectCode || c.code || c.name.substring(0, 5).toUpperCase()
+    };
   }
 
   public async createClass(dto: CreateClassDto, mentor: AuthUser): Promise<MentorClass> {
     const newId = `cls-${Date.now().toString(36)}`;
     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
     const subjectName = dto.subject || dto.subjectCode || dto.name || 'General';
-    const generatedCode = dto.code ? dto.code.toUpperCase() : `${subjectName.substring(0, 4).toUpperCase()}-${randomSuffix}`;
+    const cleanSubjectCode = (dto.subjectCode || dto.code || subjectName.substring(0, 5)).toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const generatedCode = dto.code ? dto.code.toUpperCase() : `${cleanSubjectCode.substring(0, 4)}-${randomSuffix}`;
 
     const newClass: MentorClass = {
       id: newId,
       name: dto.name,
       code: generatedCode,
+      joinCode: generatedCode,
+      subjectCode: dto.subjectCode || cleanSubjectCode || generatedCode,
       subject: dto.subject || subjectName,
       department: dto.department || mentor.department || 'Computer Science & Engineering',
       mentorId: mentor.id,
       mentorName: mentor.name,
+      mentorEmail: mentor.email,
       enrolledCount: 0,
+      enrolledStudentsCount: 0,
       maxCapacity: dto.maxCapacity || 60,
-      semester: dto.semester || 'Semester 6',
-      academicYear: '2025-2026',
+      semester: dto.semester || 5,
+      academicYear: dto.academicYear || '2026-2027',
+      coverGradient: dto.coverGradient || 'from-emerald-900 to-teal-950',
       syllabusUnits: dto.syllabusUnits || [],
       securityPolicy: {
         strictWindowLockout: true,

@@ -85,7 +85,14 @@ export class MockDatabase {
           const initialMissing = INITIAL_ACCOUNTS.filter(a => !savedIds.has(a.id));
           this.accounts = [...state.accounts, ...initialMissing];
         }
-        if (Array.isArray(state.classes)) this.classes = state.classes;
+        if (Array.isArray(state.classes)) {
+          this.classes = state.classes.map((c: any) => ({
+            ...c,
+            code: c.code || c.joinCode || '',
+            joinCode: c.joinCode || c.code || '',
+            subjectCode: c.subjectCode || c.code || c.name?.substring(0, 5)?.toUpperCase() || 'CS'
+          }));
+        }
         if (Array.isArray(state.enrollmentRequests)) this.enrollmentRequests = state.enrollmentRequests;
         if (Array.isArray(state.assessments)) this.assessments = state.assessments;
         if (Array.isArray(state.institutions)) this.institutions = state.institutions;
@@ -145,11 +152,20 @@ export class MockDatabase {
   }
 
   public findClassByCode(code: string): MentorClass | undefined {
-    const normalized = code.trim().toUpperCase();
-    return this.classes.find(c => ((c.code || c.subjectCode || '').toUpperCase() === normalized));
+    const normalized = (code || '').trim().toUpperCase();
+    if (!normalized) return undefined;
+    return this.classes.find(c => (
+      (c.joinCode && c.joinCode.toUpperCase() === normalized) ||
+      (c.code && c.code.toUpperCase() === normalized) ||
+      (c.subjectCode && c.subjectCode.toUpperCase() === normalized) ||
+      (c.id && c.id.toUpperCase() === normalized)
+    ));
   }
 
   public createClass(cls: MentorClass): MentorClass {
+    cls.joinCode = cls.joinCode || cls.code || '';
+    cls.code = cls.code || cls.joinCode || '';
+    cls.subjectCode = cls.subjectCode || cls.code || '';
     this.classes.push(cls);
     this.saveToDisk();
     return cls;

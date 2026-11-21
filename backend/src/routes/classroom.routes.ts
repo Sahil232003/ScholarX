@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import { classroomController } from '../controllers/classroom.controller';
-import { authenticate, requireRole } from '../middleware/auth.middleware';
+import { authenticate, optionalAuthenticate, requireRole } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// Classroom list and creation
-router.get('/', authenticate, (req, res) => classroomController.getClasses(req, res));
+// Public classroom lookup by joinCode or ID
+router.get('/lookup/:codeOrId', (req, res) => classroomController.lookupClass(req, res));
+
+// Classroom list (optional auth so public/student can list available classes) and creation
+router.get('/', optionalAuthenticate, (req, res) => classroomController.getClasses(req, res));
 router.post('/', authenticate, requireRole('MENTOR', 'ADMIN'), (req, res) => classroomController.createClass(req, res));
 
 // Class by ID and roster

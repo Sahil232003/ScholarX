@@ -41,12 +41,15 @@ export function extractClassCode(rawInput: string | undefined | null): string {
       const urlObj = new URL(input.startsWith('http://') || input.startsWith('https://') ? input : dummyBase + (input.startsWith('/') ? input : '/' + input));
       const codeParam = urlObj.searchParams.get('joinCode') || urlObj.searchParams.get('code') || urlObj.searchParams.get('c');
       if (codeParam) {
-        return codeParam.trim().toUpperCase();
+        const clean = codeParam.trim().toUpperCase();
+        if (clean !== 'UNDEFINED' && clean !== 'NULL') {
+          return clean;
+        }
       }
       const parts = urlObj.pathname.split('/').filter(Boolean);
       if (parts.length > 0) {
         const last = parts[parts.length - 1];
-        if (last && last !== 'classes' && last !== 'join') {
+        if (last && last !== 'classes' && last !== 'join' && last.toUpperCase() !== 'UNDEFINED' && last.toUpperCase() !== 'NULL') {
           return last.trim().toUpperCase();
         }
       }
@@ -56,13 +59,19 @@ export function extractClassCode(rawInput: string | undefined | null): string {
 
     const matchParam = input.match(/[?&](?:joinCode|code|c)=([^&#\s]+)/i);
     if (matchParam && matchParam[1]) {
-      return decodeURIComponent(matchParam[1]).trim().toUpperCase();
+      const decoded = decodeURIComponent(matchParam[1]).trim().toUpperCase();
+      if (decoded !== 'UNDEFINED' && decoded !== 'NULL') {
+        return decoded;
+      }
     }
   }
 
   // 2. Direct clean code (strip quotes, clean whitespace)
-  input = input.replace(/^["']|["']$/g, '').trim();
-  return input.toUpperCase();
+  input = input.replace(/^["']|["']$/g, '').trim().toUpperCase();
+  if (input === 'UNDEFINED' || input === 'NULL') {
+    return '';
+  }
+  return input;
 }
 
 export interface ClassroomLookupResult {
@@ -4762,7 +4771,7 @@ Process P3: (0,0,1) ------------------------ (0,0,1)  <-- Concurrent with P1!`,
     const extractedCode = extractClassCode(codeOrUrl);
     const cleanNorm = norm(extractedCode);
 
-    if (!cleanNorm) {
+    if (!cleanNorm || cleanNorm === 'UNDEFINED' || cleanNorm === 'NULL') {
       return {
         found: false,
         extractedCode: '',
@@ -4774,9 +4783,9 @@ Process P3: (0,0,1) ------------------------ (0,0,1)  <-- Concurrent with P1!`,
 
     // Check if student is already enrolled or pending in this class
     const existing = this.joinedClasses().find(c =>
-      norm(c.joinCode) === cleanNorm ||
-      norm(c.id) === cleanNorm ||
-      norm(c.subjectCode) === cleanNorm
+      (c.joinCode && norm(c.joinCode) === cleanNorm) ||
+      (c.id && norm(c.id) === cleanNorm) ||
+      (c.subjectCode && norm(c.subjectCode) === cleanNorm)
     );
     if (existing) {
       if (existing.status === 'ENROLLED') {
@@ -4807,10 +4816,11 @@ Process P3: (0,0,1) ------------------------ (0,0,1)  <-- Concurrent with P1!`,
         if (savedMentorClasses) {
           const mentorClasses = JSON.parse(savedMentorClasses);
           matchedMentorClass = mentorClasses.find((c: any) =>
-            norm(c.joinCode) === cleanNorm ||
-            norm(c.subjectCode) === cleanNorm ||
-            c.id === extractedCode ||
-            norm(c.id) === cleanNorm
+            (c.joinCode && norm(c.joinCode) === cleanNorm) ||
+            (c.code && norm(c.code) === cleanNorm) ||
+            (c.subjectCode && norm(c.subjectCode) === cleanNorm) ||
+            (c.id && c.id === extractedCode) ||
+            (c.id && norm(c.id) === cleanNorm)
           );
         }
       } catch (e) {}
@@ -4818,6 +4828,30 @@ Process P3: (0,0,1) ------------------------ (0,0,1)  <-- Concurrent with P1!`,
 
     // Lookup Built-in System Registry Classes
     const builtInClasses = [
+      {
+        id: 'cls-cs601',
+        name: 'CS601: Distributed Systems & Consensus Invariants',
+        subjectCode: 'CS601',
+        department: 'Computer Science & AI',
+        semester: 6,
+        academicYear: '2025-2026',
+        joinCode: 'DIST-SYS-601',
+        mentorName: 'Prof. Aris Thorne',
+        mentorEmail: 'aris.t@apex.edu',
+        coverGradient: 'from-emerald-900 to-teal-950'
+      },
+      {
+        id: 'cls-ai402',
+        name: 'AI402: Neural Networks & Deep Learning Architectures',
+        subjectCode: 'AI402',
+        department: 'Artificial Intelligence & Data Science',
+        semester: 8,
+        academicYear: '2025-2026',
+        joinCode: 'NEURAL-AI-402',
+        mentorName: 'Prof. Aris Thorne',
+        mentorEmail: 'aris.t@apex.edu',
+        coverGradient: 'from-indigo-900 to-purple-950'
+      },
       {
         id: 'cls-401',
         name: 'Distributed Systems & Consensus Architecture',
@@ -4902,20 +4936,22 @@ Process P3: (0,0,1) ------------------------ (0,0,1)  <-- Concurrent with P1!`,
       };
     }
 
+    const targetJoinCode = matchedMentorClass.joinCode || matchedMentorClass.code || extractedCode;
+
     return {
       found: true,
-      extractedCode: matchedMentorClass.joinCode || extractedCode,
+      extractedCode: targetJoinCode,
       isEnrolled: false,
       isPending: false,
       classroom: {
         id: matchedMentorClass.id,
         name: matchedMentorClass.name,
-        subjectCode: matchedMentorClass.subjectCode,
-        joinCode: matchedMentorClass.joinCode || extractedCode,
+        subjectCode: matchedMentorClass.subjectCode || matchedMentorClass.code || 'CS',
+        joinCode: targetJoinCode,
         mentorName: matchedMentorClass.mentorName || 'Prof. Aris Thorne',
         mentorEmail: matchedMentorClass.mentorEmail || 'aris.t@apex.edu',
         department: matchedMentorClass.department || 'Computer Science & Engineering',
-        semester: matchedMentorClass.semester || 6,
+        semester: matchedMentorClass.semester || 5,
         academicYear: matchedMentorClass.academicYear || '2026-2027',
         coverGradient: matchedMentorClass.coverGradient || 'from-indigo-900 to-slate-950'
       }

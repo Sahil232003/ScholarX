@@ -159,16 +159,67 @@ export class StudentClassesComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.syncAvailableClasses();
     this.route.queryParamMap.subscribe(params => {
       const code = params.get('joinCode') || params.get('code') || params.get('c');
       if (code) {
-        this.handleDirectJoinLink(code);
+        const clean = code.trim().toLowerCase();
+        if (clean && clean !== 'undefined' && clean !== 'null') {
+          this.handleDirectJoinLink(code);
+        } else {
+          this.router.navigate([], { queryParams: {} });
+        }
       }
     });
   }
 
-  private handleDirectJoinLink(rawParam: string): void {
-    const lookup = this.studentService.findClassroom(rawParam);
+  private syncAvailableClasses(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      fetch('http://localhost:5000/api/v1/classes')
+        .then(res => res.json())
+        .then(data => {
+          const classes = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+          if (classes.length > 0) {
+            const existingRaw = localStorage.getItem('viva_mentor_classes');
+            const existing = existingRaw ? JSON.parse(existingRaw) : [];
+            const map = new Map<string, any>();
+            existing.forEach((c: any) => map.set(c.id, c));
+            classes.forEach((c: any) => {
+              map.set(c.id, {
+                ...c,
+                joinCode: c.joinCode || c.code || '',
+                subjectCode: c.subjectCode || c.code || ''
+              });
+            });
+            localStorage.setItem('viva_mentor_classes', JSON.stringify(Array.from(map.values())));
+          }
+        })
+        .catch(() => {});
+    } catch (e) {}
+  }
+
+  private async handleDirectJoinLink(rawParam: string): Promise<void> {
+    let lookup = this.studentService.findClassroom(rawParam);
+
+    if (!lookup.found) {
+      try {
+        const clean = extractClassCode(rawParam);
+        if (clean && clean.toLowerCase() !== 'undefined' && clean.toLowerCase() !== 'null') {
+          const res = await fetch(`http://localhost:5000/api/v1/classes/lookup/${encodeURIComponent(clean)}`);
+          const json = await res.json();
+          if (json && json.success && json.classroom) {
+            const existingRaw = localStorage.getItem('viva_mentor_classes');
+            const existing = existingRaw ? JSON.parse(existingRaw) : [];
+            const map = new Map<string, any>();
+            existing.forEach((c: any) => map.set(c.id, c));
+            map.set(json.classroom.id, json.classroom);
+            localStorage.setItem('viva_mentor_classes', JSON.stringify(Array.from(map.values())));
+            lookup = this.studentService.findClassroom(rawParam);
+          }
+        }
+      } catch (e) {}
+    }
 
     if (!lookup.found) {
       this.showToast(lookup.errorMessage || `Classroom not found. No active classroom matches "${rawParam}".`, 'ERROR');
@@ -326,9 +377,9 @@ export class StudentClassesComponent implements OnInit, OnDestroy {
     }
   }
 
-  submitJoin(): void {
+  async submitJoin(): Promise<void> {
     const rawInput = this.joinModalMode() === 'CODE' ? this.inputJoinCode().trim() : this.inputJoinLink().trim();
-    if (!rawInput) {
+    if (!rawInput || rawInput.toLowerCase() === 'undefined' || rawInput.toLowerCase() === 'null') {
       this.joinModalError.set('Please enter a valid course code or link.');
       return;
     }
@@ -336,7 +387,26 @@ export class StudentClassesComponent implements OnInit, OnDestroy {
     this.joinModalError.set(null);
 
     // Validate Classroom Existence
-    const lookup = this.studentService.findClassroom(rawInput);
+    let lookup = this.studentService.findClassroom(rawInput);
+
+    if (!lookup.found) {
+      try {
+        const clean = extractClassCode(rawInput);
+        if (clean && clean.toLowerCase() !== 'undefined' && clean.toLowerCase() !== 'null') {
+          const res = await fetch(`http://localhost:5000/api/v1/classes/lookup/${encodeURIComponent(clean)}`);
+          const json = await res.json();
+          if (json && json.success && json.classroom) {
+            const existingRaw = localStorage.getItem('viva_mentor_classes');
+            const existing = existingRaw ? JSON.parse(existingRaw) : [];
+            const map = new Map<string, any>();
+            existing.forEach((c: any) => map.set(c.id, c));
+            map.set(json.classroom.id, json.classroom);
+            localStorage.setItem('viva_mentor_classes', JSON.stringify(Array.from(map.values())));
+            lookup = this.studentService.findClassroom(rawInput);
+          }
+        }
+      } catch (e) {}
+    }
 
     if (!lookup.found) {
       const errorMsg = lookup.errorMessage || `Classroom not found. No active classroom matches "${rawInput}". Please check with your mentor.`;
