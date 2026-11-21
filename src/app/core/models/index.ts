@@ -159,6 +159,11 @@ export interface StudentRosterItem {
   enrolledAt: string;
   status: StudentEnrollmentStatus;
   completedVivasCount: number;
+  rollNumber?: string;
+  attendanceRate?: number;
+  vivaReadiness?: string;
+  currentProctorStatus?: string;
+  lastActive?: string;
 }
 
 export interface EnrollmentRequest {
@@ -170,6 +175,11 @@ export interface EnrollmentRequest {
   studentName: string;
   studentEmail: string;
   requestedAt: string;
+  studentRollNumber?: string;
+  department?: string;
+  status?: string;
+  decidedAt?: string;
+  rejectionReason?: string;
 }
 
 export interface AssignmentStudentAcceptance {

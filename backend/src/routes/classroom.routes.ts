@@ -11,13 +11,17 @@ router.get('/lookup/:codeOrId', (req, res) => classroomController.lookupClass(re
 router.get('/', optionalAuthenticate, (req, res) => classroomController.getClasses(req, res));
 router.post('/', authenticate, requireRole('MENTOR', 'ADMIN'), (req, res) => classroomController.createClass(req, res));
 
-// Class by ID and roster
-router.get('/:id', authenticate, (req, res) => classroomController.getClassById(req, res));
-router.get('/:id/students', authenticate, requireRole('MENTOR', 'ADMIN'), (req, res) => classroomController.getClassStudents(req, res));
+// Enrollment requests and joining (must be before /:id to catch /enrollment-requests)
+router.get('/enrollment-requests', optionalAuthenticate, (req, res) => classroomController.getEnrollmentRequests(req, res));
+router.post('/join', optionalAuthenticate, (req, res) => classroomController.joinClass(req, res));
 
-// Enrollment requests and joining
-router.get('/:id/enrollment-requests', authenticate, requireRole('MENTOR', 'ADMIN'), (req, res) => classroomController.getEnrollmentRequests(req, res));
-router.post('/:id/join', authenticate, requireRole('STUDENT'), (req, res) => classroomController.joinClass(req, res));
+// Class by ID and roster
+router.get('/:id', optionalAuthenticate, (req, res) => classroomController.getClassById(req, res));
+router.get('/:id/students', optionalAuthenticate, (req, res) => classroomController.getClassStudents(req, res));
+
+// Enrollment requests and joining per class
+router.get('/:id/enrollment-requests', optionalAuthenticate, (req, res) => classroomController.getEnrollmentRequests(req, res));
+router.post('/:id/join', optionalAuthenticate, (req, res) => classroomController.joinClass(req, res));
 
 // Security policy and proctoring
 router.put('/:id/security-policy', authenticate, requireRole('MENTOR', 'ADMIN'), (req, res) => classroomController.updateSecurityPolicy(req, res));

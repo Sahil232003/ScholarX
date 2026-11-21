@@ -5014,6 +5014,31 @@ Process P3: (0,0,1) ------------------------ (0,0,1)  <-- Concurrent with P1!`,
     // Save to shared enrollment roster and mentor notifications
     this.writeToSharedEnrollmentRoster(newPending);
 
+    // Sync with Core Backend
+    if (typeof window !== 'undefined') {
+      try {
+        const studentProfile = this.profile();
+        fetch(`http://localhost:5000/api/v1/classes/${encodeURIComponent(target.id)}/join`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            classId: target.id,
+            classCode: target.joinCode,
+            student: {
+              id: studentProfile.studentId || studentProfile.id || 'usr-student-001',
+              studentId: studentProfile.studentId || 'usr-student-001',
+              name: studentProfile.fullName || 'Student Scholar',
+              email: studentProfile.email || 'student@apex.edu',
+              rollNumber: studentProfile.studentId || '20230121',
+              department: studentProfile.department || 'Computer Science'
+            }
+          })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
     // Broadcast across channel
     if (this.enrollmentChannel) {
       try {
@@ -5073,9 +5098,12 @@ Process P3: (0,0,1) ------------------------ (0,0,1)  <-- Concurrent with P1!`,
           classId: cls.id,
           className: cls.name,
           classCode: cls.joinCode,
-          studentId: this.profile().studentId,
-          studentName: this.profile().fullName,
-          studentEmail: this.profile().email,
+          studentId: this.profile().studentId || 'usr-student-001',
+          studentName: this.profile().fullName || 'Student Scholar',
+          studentEmail: this.profile().email || 'student@apex.edu',
+          studentRollNumber: this.profile().studentId || '20230121',
+          department: this.profile().department || 'Computer Science & Engineering',
+          status: 'PENDING',
           requestedAt: 'Just now'
         });
         localStorage.setItem('viva_enrollment_requests', JSON.stringify(list));

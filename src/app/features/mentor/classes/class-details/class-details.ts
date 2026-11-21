@@ -1543,7 +1543,7 @@ export class ClassDetailsComponent implements OnInit, OnDestroy {
                 studentId: req.studentId,
                 name: req.studentName,
                 email: req.studentEmail,
-                department: 'Computer Science',
+                department: req.department || 'Computer Science',
                 enrolledAt: new Date().toISOString(),
                 status: 'ACTIVE',
                 completedVivasCount: 0
@@ -1553,6 +1553,36 @@ export class ClassDetailsComponent implements OnInit, OnDestroy {
             this.syncLiveFeedsWithRegisteredStudents(updated, this.classId());
             return updated;
           });
+
+          // Broadcast enrollment approval to student window
+          if (this.enrollmentChannel) {
+            try {
+              this.enrollmentChannel.postMessage({
+                type: 'ENROLLMENT_APPROVED',
+                studentId: req.studentId,
+                classCode: this.classItem()?.joinCode || this.classId(),
+                classId: this.classId()
+              });
+            } catch (e) {}
+          }
+
+          // Update student joined classes in localStorage if present
+          try {
+            if (typeof window !== 'undefined') {
+              const joinedRaw = localStorage.getItem('viva_student_joined_classes');
+              if (joinedRaw) {
+                const joined = JSON.parse(joinedRaw);
+                const updatedJoined = joined.map((c: any) => {
+                  if (c.id === this.classId() || (c.joinCode && c.joinCode === this.classItem()?.joinCode)) {
+                    return { ...c, status: 'ENROLLED' };
+                  }
+                  return c;
+                });
+                localStorage.setItem('viva_student_joined_classes', JSON.stringify(updatedJoined));
+              }
+            }
+          } catch (e) {}
+
           this.isActionSubmitting.set(false);
           this.closeActionModal();
           this.actionSuccessToast.set(`🎉 Successfully approved enrollment for ${req.studentName} (${req.studentId})!`);

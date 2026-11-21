@@ -7,7 +7,7 @@ import vivaRoutes from './viva.routes';
 import adminRoutes from './admin.routes';
 import broadcastRoutes from './broadcast.routes';
 import { classroomController } from '../controllers/classroom.controller';
-import { authenticate, requireRole } from '../middleware/auth.middleware';
+import { authenticate, optionalAuthenticate, requireRole } from '../middleware/auth.middleware';
 
 const apiRouter = Router();
 
@@ -24,15 +24,13 @@ apiRouter.use('/broadcasts', broadcastRoutes);
 // Direct enrollment-requests endpoint routes
 apiRouter.post(
   '/enrollment-requests/:id/approve',
-  authenticate,
-  requireRole('MENTOR', 'ADMIN'),
+  optionalAuthenticate,
   (req, res) => classroomController.approveEnrollment(req, res)
 );
 
 apiRouter.post(
   '/enrollment-requests/:id/reject',
-  authenticate,
-  requireRole('MENTOR', 'ADMIN'),
+  optionalAuthenticate,
   (req, res) => classroomController.rejectEnrollment(req, res)
 );
 

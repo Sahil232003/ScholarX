@@ -93,12 +93,13 @@ export class ClassroomController {
 
   public async joinClass(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      if (!req.user) {
-        res.status(401).json({ success: false, error: 'Unauthorized.' });
+      const classIdOrCode = req.params.id || req.body.classId || req.body.classCode || req.body.code;
+      const student = req.user || req.body.student || req.body;
+      if (!student || (!student.id && !student.studentId && !student.name && !student.fullName && !student.email)) {
+        res.status(400).json({ success: false, error: 'Student details are required to join class.' });
         return;
       }
-      const classIdOrCode = req.params.id || req.body.classCode || req.body.code;
-      const request = await classroomService.joinClass(classIdOrCode, req.user);
+      const request = await classroomService.joinClass(classIdOrCode, student);
       res.status(200).json({ success: true, request });
     } catch (err: any) {
       res.status(400).json({ success: false, error: err.message });

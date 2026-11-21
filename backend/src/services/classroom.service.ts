@@ -94,38 +94,68 @@ export class ClassroomService {
   }
 
   public async getClassStudents(classId: string): Promise<StudentRosterItem[]> {
-    // Generate roster from approved enrollment requests and sample records
-    const approvedRequests = db.enrollmentRequests.filter(r => r.classId === classId && r.status === 'APPROVED');
+    const targetClass = db.findClassById(classId) || db.findClassByCode(classId);
+    const targetId = targetClass ? targetClass.id : classId;
+    const targetCode = targetClass?.joinCode || targetClass?.code || '';
+
+    // Generate roster from approved enrollment requests
+    const approvedRequests = db.enrollmentRequests.filter(r => {
+      const matchId = r.classId === targetId || r.classId === classId;
+      const matchCode = targetCode && ((r as any).classCode === targetCode || (r as any).classCode === targetClass?.code);
+      return (matchId || matchCode) && r.status === 'APPROVED';
+    });
 
     const roster: StudentRosterItem[] = approvedRequests.map((req, idx) => ({
-      id: req.studentId,
+      id: req.id || `stu-${req.studentId}`,
+      studentId: req.studentId,
       name: req.studentName,
       email: req.studentEmail,
-      rollNumber: req.studentRollNumber,
-      attendanceRate: 90 + (idx % 10),
+      rollNumber: req.studentRollNumber || '20230121',
+      department: req.department || 'Computer Science & Engineering',
+      attendanceRate: 92 + (idx % 8),
       vivaReadiness: (idx % 2 === 0 ? 'HIGH' : 'MEDIUM') as 'HIGH' | 'MEDIUM' | 'LOW',
       currentProctorStatus: 'NORMAL',
-      lastActive: new Date().toISOString()
+      lastActive: new Date().toISOString(),
+      completedVivasCount: 0,
+      status: 'ACTIVE'
     }));
 
     return roster;
   }
 
   public async getEnrollmentRequests(classId?: string): Promise<EnrollmentRequest[]> {
-    return db.findEnrollmentRequests(classId);
+    if (!classId) {
+      return db.enrollmentRequests.filter(r => r.status === 'PENDING');
+    }
+
+    const targetClass = db.findClassById(classId) || db.findClassByCode(classId);
+    const targetId = targetClass ? targetClass.id : classId;
+    const targetCode = targetClass?.joinCode || targetClass?.code || '';
+
+    return db.enrollmentRequests.filter(r => {
+      const matchId = r.classId === targetId || r.classId === classId;
+      const matchCode = targetCode && ((r as any).classCode === targetCode || (r as any).classCode === targetClass?.code);
+      return (matchId || matchCode) && r.status === 'PENDING';
+    });
   }
 
-  public async joinClass(classIdOrCode: string, student: AuthUser): Promise<EnrollmentRequest> {
+  public async joinClass(classIdOrCode: string, student: any): Promise<EnrollmentRequest> {
     const normalized = this.extractClassCode(classIdOrCode);
-    const targetClass = db.findClassById(classIdOrCode) || db.findClassByCode(normalized);
+    const targetClass = db.findClassById(classIdOrCode) || db.findClassByCode(normalized) || db.findClassByCode(classIdOrCode);
 
     if (!targetClass) {
       throw new Error(`Classroom not found for code or ID: "${classIdOrCode}"`);
     }
 
+    const sId = student.id || student.studentId || `usr-student-${Date.now()}`;
+    const sEmail = (student.email || '').toLowerCase();
+    const sRoll = student.rollNumber || student.studentRollNumber || student.rollNo || sId;
+    const sName = student.name || student.fullName || 'Student Scholar';
+
     // Check if already requested or enrolled
     const existingReq = db.enrollmentRequests.find(
-      r => r.classId === targetClass.id && r.studentId === student.id
+      r => (r.classId === targetClass.id || (r as any).classCode === targetClass.joinCode) &&
+           (r.studentId === sId || (sEmail && r.studentEmail.toLowerCase() === sEmail))
     );
 
     if (existingReq) {
@@ -136,16 +166,18 @@ export class ClassroomService {
       id: `req-${Date.now()}`,
       classId: targetClass.id,
       className: targetClass.name,
-      studentId: student.id,
-      studentName: student.name,
-      studentEmail: student.email,
-      studentRollNumber: student.rollNumber || '20230121',
-      department: student.department || 'Computer Science',
+      studentId: sId,
+      studentName: sName,
+      studentEmail: student.email || `${sId}@scholarx.edu`,
+      studentRollNumber: sRoll,
+      department: student.department || 'Computer Science & Engineering',
       status: 'PENDING',
       requestedAt: new Date().toISOString()
     };
+    (newRequest as any).classCode = targetClass.joinCode || targetClass.code;
 
     db.enrollmentRequests.push(newRequest);
+    db.saveToDisk();
     return newRequest;
   }
 
@@ -158,11 +190,12 @@ export class ClassroomService {
     request.status = 'APPROVED';
     request.decidedAt = new Date().toISOString();
 
-    const targetClass = db.findClassById(request.classId);
+    const targetClass = db.findClassById(request.classId) || db.findClassByCode((request as any).classCode);
     if (targetClass) {
       targetClass.enrolledCount = (targetClass.enrolledCount || 0) + 1;
     }
 
+    db.saveToDisk();
     return request;
   }
 
@@ -176,6 +209,7 @@ export class ClassroomService {
     request.rejectionReason = rejectionReason || 'Capacity full or prerequisite not met';
     request.decidedAt = new Date().toISOString();
 
+    db.saveToDisk();
     return request;
   }
 
