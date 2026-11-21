@@ -32,23 +32,23 @@ export interface StudentRegistrationData {
   fullName: string;
   email: string;
   rollNumber: string;
-  collegeName: string;
-  degreeProgram: string;
-  department: string;
-  yearSemester: string;
+  collegeName?: string;
+  degreeProgram?: string;
+  department?: string;
+  yearSemester?: string;
   password: string;
   confirmPassword?: string;
 }
 
 export interface MentorRegistrationData {
-  academicTitle: string;
+  academicTitle?: string;
   fullName: string;
   email: string;
   facultyId: string;
-  collegeName: string;
-  department: string;
-  designation: string;
-  teachingSpecialization: string;
+  collegeName?: string;
+  department?: string;
+  designation?: string;
+  teachingSpecialization?: string;
   isVivaExaminerAuthorized?: boolean;
   password: string;
   confirmPassword?: string;

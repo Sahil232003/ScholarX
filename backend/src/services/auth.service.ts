@@ -58,7 +58,7 @@ export class AuthService {
   public async registerStudent(dto: StudentRegisterDto): Promise<AuthResponse> {
     const { fullName, email, rollNumber, collegeName, degreeProgram, department, yearSemester, password } = dto;
 
-    if (!fullName || !email || !rollNumber || !collegeName || !password) {
+    if (!fullName?.trim() || !email?.trim() || !rollNumber?.trim() || !password) {
       return { success: false, error: 'Please fill in all mandatory fields.' };
     }
 
@@ -74,7 +74,7 @@ export class AuthService {
       email: email.trim().toLowerCase(),
       role: 'STUDENT',
       avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName.trim())}`,
-      institution: collegeName.trim(),
+      institution: collegeName?.trim() || 'Apex Institute of Technology',
       department: department?.trim() || 'Computer Science & Engineering',
       degreeProgram: degreeProgram?.trim() || 'B.Tech Computer Science',
       rollNumber: rollNumber.trim(),
@@ -97,7 +97,7 @@ export class AuthService {
   public async registerMentor(dto: MentorRegisterDto): Promise<AuthResponse> {
     const { academicTitle, fullName, email, facultyId, collegeName, department, designation, teachingSpecialization, isVivaExaminerAuthorized, password } = dto;
 
-    if (!fullName || !email || !facultyId || !collegeName || !password) {
+    if (!fullName?.trim() || !email?.trim() || !facultyId?.trim() || !password) {
       return { success: false, error: 'Please fill in all mandatory fields.' };
     }
 
@@ -117,7 +117,7 @@ export class AuthService {
       email: email.trim().toLowerCase(),
       role: 'MENTOR',
       avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(fullName.trim())}`,
-      institution: collegeName.trim(),
+      institution: collegeName?.trim() || 'Apex Institute of Technology',
       department: department?.trim() || 'Computer Science & AI',
       academicTitle: academicTitle || 'Prof.',
       facultyId: facultyId.trim(),

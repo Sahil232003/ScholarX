@@ -75,10 +75,10 @@ export class LoginComponent implements OnInit {
     fullName: '',
     email: '',
     rollNumber: '',
-    collegeName: '',
-    degreeProgram: '',
-    department: '',
-    yearSemester: '',
+    collegeName: 'Apex Institute of Technology',
+    degreeProgram: 'B.Tech Computer Science',
+    department: 'Computer Science & Engineering',
+    yearSemester: 'Year 1 / Sem 1',
     password: '',
     confirmPassword: ''
   };
@@ -89,10 +89,10 @@ export class LoginComponent implements OnInit {
     fullName: '',
     email: '',
     facultyId: '',
-    collegeName: '',
-    department: '',
-    designation: '',
-    teachingSpecialization: '',
+    collegeName: 'Apex Institute of Technology',
+    department: 'Computer Science & AI',
+    designation: 'Faculty Mentor',
+    teachingSpecialization: 'Distributed Computing',
     isVivaExaminerAuthorized: true,
     password: '',
     confirmPassword: ''
@@ -261,6 +261,10 @@ export class LoginComponent implements OnInit {
       return;
     }
 
+    if (!this.studentForm.collegeName?.trim()) {
+      this.studentForm.collegeName = 'Apex Institute of Technology';
+    }
+
     this.isSubmitting.set(true);
 
     try {
@@ -309,6 +313,10 @@ export class LoginComponent implements OnInit {
     if (this.mentorForm.password.length < 6) {
       this.errorMessage.set('Password must be at least 6 characters long.');
       return;
+    }
+
+    if (!this.mentorForm.collegeName?.trim()) {
+      this.mentorForm.collegeName = 'Apex Institute of Technology';
     }
 
     this.isSubmitting.set(true);
