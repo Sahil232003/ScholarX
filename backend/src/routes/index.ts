@@ -40,6 +40,9 @@ apiRouter.post(
 apiRouter.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ONLINE',
+    mode: 'OFFLINE_STANDALONE',
+    supabase: 'LOCAL_OFFLINE',
+    persistence: 'DISK_BACKED',
     service: 'ScholarX Academic Portal Core Backend',
     version: '1.0.0',
     timestamp: new Date().toISOString()

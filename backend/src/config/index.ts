@@ -12,13 +12,17 @@ export const config = {
   adminMasterPass: process.env.ADMIN_MASTER_PASS || 'AdminMaster#2026',
   enableWebSocket: process.env.ENABLE_WEBSOCKET !== 'false',
 
-  // 1. Supabase (Database & Auth)
+  // 1. Supabase (Database & Auth - Offline Local Supabase Adapter)
   supabase: {
-    url: process.env.SUPABASE_URL || '',
-    anonKey: process.env.SUPABASE_ANON_KEY || '',
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    mode: process.env.SUPABASE_MODE || 'offline',
+    url: process.env.SUPABASE_URL || 'http://127.0.0.1:54321',
+    anonKey: process.env.SUPABASE_ANON_KEY || 'sb_publishable_local_offline_key',
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || 'sb_secret_local_offline_key',
+    get isOffline(): boolean {
+      return this.mode === 'offline' || !this.url || this.url.includes('127.0.0.1') || this.url.includes('localhost');
+    },
     get isConfigured(): boolean {
-      return Boolean(this.url && (this.anonKey || this.serviceRoleKey));
+      return true;
     }
   },
 

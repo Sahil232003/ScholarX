@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import {
   StoredAccount,
   MentorClass,
@@ -23,6 +25,7 @@ import {
 
 export class MockDatabase {
   private static instance: MockDatabase;
+  private dbFilePath = path.join(__dirname, '..', '..', 'data', 'offline_db.json');
 
   public accounts: StoredAccount[] = [];
   public classes: MentorClass[] = [];
@@ -47,6 +50,59 @@ export class MockDatabase {
     return MockDatabase.instance;
   }
 
+  public saveToDisk(): void {
+    try {
+      const dir = path.dirname(this.dbFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const state = {
+        accounts: this.accounts,
+        classes: this.classes,
+        enrollmentRequests: this.enrollmentRequests,
+        assessments: this.assessments,
+        institutions: this.institutions,
+        broadcasts: this.broadcasts,
+        globalNotice: this.globalNotice,
+        roleCapabilities: this.roleCapabilities,
+        proctorIncidents: this.proctorIncidents,
+        terminatedStudents: this.terminatedStudents,
+        savedAt: new Date().toISOString()
+      };
+      fs.writeFileSync(this.dbFilePath, JSON.stringify(state, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('[OfflineDB] Error saving to disk:', err);
+    }
+  }
+
+  public loadFromDisk(): void {
+    try {
+      if (fs.existsSync(this.dbFilePath)) {
+        const raw = fs.readFileSync(this.dbFilePath, 'utf-8');
+        const state = JSON.parse(raw);
+        if (Array.isArray(state.accounts)) {
+          const savedIds = new Set(state.accounts.map((a: StoredAccount) => a.id));
+          const initialMissing = INITIAL_ACCOUNTS.filter(a => !savedIds.has(a.id));
+          this.accounts = [...state.accounts, ...initialMissing];
+        }
+        if (Array.isArray(state.classes)) this.classes = state.classes;
+        if (Array.isArray(state.enrollmentRequests)) this.enrollmentRequests = state.enrollmentRequests;
+        if (Array.isArray(state.assessments)) this.assessments = state.assessments;
+        if (Array.isArray(state.institutions)) this.institutions = state.institutions;
+        if (Array.isArray(state.broadcasts)) this.broadcasts = state.broadcasts;
+        if (state.globalNotice !== undefined) this.globalNotice = state.globalNotice;
+        if (Array.isArray(state.roleCapabilities)) this.roleCapabilities = state.roleCapabilities;
+        if (Array.isArray(state.proctorIncidents)) this.proctorIncidents = state.proctorIncidents;
+        if (Array.isArray(state.terminatedStudents)) this.terminatedStudents = state.terminatedStudents;
+        console.log(`[OfflineDB] Loaded offline state from ${this.dbFilePath} (${this.accounts.length} accounts, ${this.classes.length} classes).`);
+      } else {
+        this.saveToDisk();
+      }
+    } catch (err) {
+      console.error('[OfflineDB] Error loading from disk:', err);
+    }
+  }
+
   public reset(): void {
     this.accounts = JSON.parse(JSON.stringify(INITIAL_ACCOUNTS));
     this.classes = JSON.parse(JSON.stringify(INITIAL_CLASSES));
@@ -59,6 +115,12 @@ export class MockDatabase {
     this.proctorIncidents = [];
     this.terminatedStudents = [];
     this.studentPracticeAttempts.clear();
+
+    this.loadFromDisk();
+  }
+
+  public persist(): void {
+    this.saveToDisk();
   }
 
   // Account queries
@@ -73,6 +135,7 @@ export class MockDatabase {
 
   public createAccount(account: StoredAccount): StoredAccount {
     this.accounts.push(account);
+    this.saveToDisk();
     return account;
   }
 
@@ -88,6 +151,7 @@ export class MockDatabase {
 
   public createClass(cls: MentorClass): MentorClass {
     this.classes.push(cls);
+    this.saveToDisk();
     return cls;
   }
 
@@ -98,6 +162,7 @@ export class MockDatabase {
 
   public createAssessment(assessment: Assessment): Assessment {
     this.assessments.push(assessment);
+    this.saveToDisk();
     return assessment;
   }
 
@@ -120,6 +185,7 @@ export class MockDatabase {
 
   public createInstitution(inst: Institution): Institution {
     this.institutions.push(inst);
+    this.saveToDisk();
     return inst;
   }
 }

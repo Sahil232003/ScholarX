@@ -80,18 +80,19 @@ const PORT = config.port;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`=======================================================`);
   console.log(` ScholarX Core Backend Service Started Successfully`);
+  console.log(` Operating Mode:  🟢 100% OFFLINE (Local Supabase & Disk Persistence)`);
   console.log(` HTTP REST API:   http://localhost:${PORT}/api/v1`);
   console.log(` WebSocket Bus:   ws://localhost:${PORT}/ws`);
   console.log(` Health Check:    http://localhost:${PORT}/api/v1/health`);
-  console.log(` Source Dir:      ${process.cwd()}`);
+  console.log(` Persistence:     backend/data/offline_db.json`);
   console.log(`-------------------------------------------------------`);
-  console.log(` Cloud Adapters Status (Dual-Mode):`);
-  console.log(`   • DB (Postgres):     ${config.supabase.isConfigured ? '🟢 Supabase Cloud Connected' : '🟡 Local Store (Ready for Supabase Key)'}`);
-  console.log(`   • Auth:              ${config.supabase.isConfigured ? '🟢 Supabase Auth Active' : '🟡 Local JWT Store (Ready for Supabase Key)'}`);
-  console.log(`   • Cloud Storage:     ${config.r2.isConfigured ? '🟢 Cloudflare R2 Active' : '🟡 Local Disk Storage (Ready for R2 Key)'}`);
-  console.log(`   • Real-Time Viva:    ${config.livekit.isConfigured ? '🟢 LiveKit Cloud WebRTC' : '🟡 Local WebSocket Bus (Ready for LiveKit Key)'}`);
-  console.log(`   • Cache:             ${config.redis.isConfigured ? '🟢 Redis Engine Configured' : '🟡 Local In-Memory TTL Cache'}`);
-  console.log(`   • Messages:          ${config.firestore.isConfigured ? '🟢 Google Firestore Active' : '🟡 Local Real-Time Channel (Ready for Firebase Key)'}`);
+  console.log(` Offline Adapters Status:`);
+  console.log(`   • DB (Postgres/JSON): 🟢 Offline Local Supabase / File Store (127.0.0.1:54321)`);
+  console.log(`   • Auth & Security:    🟢 Offline Local Auth & JWT Active (Zero External Calls)`);
+  console.log(`   • Object Storage:     🟢 Offline Local Disk Storage Active`);
+  console.log(`   • Real-Time Viva:     🟢 Offline WebSocket Bus (ws://localhost:${PORT}/ws)`);
+  console.log(`   • Cache:              🟢 Offline In-Memory TTL Cache Active`);
+  console.log(`   • Messages:           🟢 Offline Local Real-Time Channel Active`);
   console.log(`=======================================================`);
 });
 

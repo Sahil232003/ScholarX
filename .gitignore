@@ -29,6 +29,7 @@ scratch_*.png
 archive/
 
 # OS and Editor
+backend/data/*.json
 .DS_Store
 Thumbs.db
 .idea/
